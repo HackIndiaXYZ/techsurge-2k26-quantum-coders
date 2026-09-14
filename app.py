@@ -10,36 +10,25 @@ st.set_page_config(
     layout="wide"
 )
 
-# ---------------- CUSTOM STYLE ----------------
+# ---------------- STYLE ----------------
 
 st.markdown("""
 <style>
-
-.main {
-    background-color: #f7f9fc;
-}
-
 .hero {
     padding: 25px;
     border-radius: 18px;
-    background-color: #0b1f3a;
+    background: #0b1f3a;
     color: white;
     margin-bottom: 25px;
 }
 
 .card {
-    padding: 20px;
-    border-radius: 16px;
-    background-color: white;
-    border: 1px solid #e5e7eb;
-    margin-bottom: 15px;
+    padding: 18px;
+    border-radius: 15px;
+    background: white;
+    border: 1px solid #dddddd;
+    margin-bottom: 12px;
 }
-
-.small {
-    color: #cbd5e1;
-    font-size: 14px;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -47,17 +36,13 @@ st.markdown("""
 
 st.markdown("""
 <div class="hero">
-
-<h1>🛡️ FinShield AI</h1>
-
-<p style="font-size:20px;">
-Your AI-powered Financial Safety Assistant
-</p>
-
-<p class="small">
-Detect phishing, fake payment requests, OTP scams and suspicious links before you act.
-</p>
-
+    <h1>🛡️ FinShield AI</h1>
+    <p style="font-size:20px;">
+        Your Financial Safety Assistant
+    </p>
+    <p>
+        Detect phishing, fake payment requests, OTP scams and suspicious links before you act.
+    </p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -72,13 +57,10 @@ def save(score, category):
         0,
         (score, category)
     )
-
-    st.session_state.history = (
-        st.session_state.history[:10]
-    )
+    st.session_state.history = st.session_state.history[:10]
 
 
-# ---------------- SCAM DETECTOR ----------------
+# ---------------- DETECTOR ----------------
 
 def detect(text):
 
@@ -88,254 +70,144 @@ def detect(text):
     warnings = []
     category = "Other"
 
-    # OTP detection
+    # OTP
     if "otp" in text:
-
         score += 35
         category = "OTP Scam"
+        warnings.append("OTP is requested.")
 
-        warnings.append(
-            "OTP is requested."
-        )
-
-    # Payment detection
-    if any(
-        word in text
-        for word in [
-            "pay",
-            "payment",
-            "transfer",
-            "fee",
-            "upi"
-        ]
-    ):
-
+    # Payment
+    if any(word in text for word in [
+        "pay",
+        "payment",
+        "transfer",
+        "fee",
+        "upi"
+    ]):
         score += 25
         category = "Fake Payment Request"
+        warnings.append("Money is requested.")
 
-        warnings.append(
-            "Money is requested."
-        )
-
-    # Urgency detection
-    if any(
-        word in text
-        for word in [
-            "urgent",
-            "immediately",
-            "today",
-            "now",
-            "act fast",
-            "within minutes"
-        ]
-    ):
-
+    # Urgency
+    if any(word in text for word in [
+        "urgent",
+        "immediately",
+        "today",
+        "now",
+        "act fast"
+    ]):
         score += 20
+        warnings.append("Creates urgency or pressure.")
 
-        warnings.append(
-            "Creates urgency or pressure."
-        )
-
-    # Prize detection
-    if any(
-        word in text
-        for word in [
-            "won",
-            "prize",
-            "reward",
-            "lottery",
-            "cashback",
-            "congratulations"
-        ]
-    ):
-
+    # Prize
+    if any(word in text for word in [
+        "won",
+        "prize",
+        "reward",
+        "lottery",
+        "cashback",
+        "congratulations"
+    ]):
         score += 30
-
         category = "Prize Scam"
+        warnings.append("Prize or reward is mentioned.")
 
-        warnings.append(
-            "Prize or reward is mentioned."
-        )
-
-    # Account blocking detection
-    if any(
-        word in text
-        for word in [
-            "account blocked",
-            "account suspended",
-            "account will be blocked",
-            "account will be suspended"
-        ]
-    ):
-
+    # Account blocking
+    if any(word in text for word in [
+        "account blocked",
+        "account suspended",
+        "account will be blocked",
+        "account will be suspended"
+    ]):
         score += 25
-
         category = "Account Blocking Scam"
+        warnings.append("Threatens account action.")
 
-        warnings.append(
-            "Threatens account action."
-        )
-
-    # Link detection
-    if (
-        "http://" in text
-        or "https://" in text
-    ):
-
+    # Link
+    if "http://" in text or "https://" in text:
         score += 15
+        warnings.append("Contains a link.")
 
-        warnings.append(
-            "Contains a link."
-        )
-
-    # Personal information detection
-    if any(
-        word in text
-        for word in [
-            "password",
-            "pin",
-            "cvv",
-            "card number",
-            "bank details"
-        ]
-    ):
-
+    # Sensitive information
+    if any(word in text for word in [
+        "password",
+        "pin",
+        "cvv",
+        "card number",
+        "bank details"
+    ]):
         score += 25
+        warnings.append("Requests sensitive financial information.")
 
-        warnings.append(
-            "Requests sensitive financial information."
-        )
-
-    # Make sure we have at least 3 warnings
+    # Minimum warnings
     while len(warnings) < 3:
+        warnings.append("Verify the request independently.")
 
-        warnings.append(
-            "Verify the request independently."
-        )
-
-    score = min(score, 100)
-
-    return (
-        score,
-        category,
-        warnings[:3]
-    )
+    return min(score, 100), category, warnings[:3]
 
 
-# ---------------- RESULT DISPLAY ----------------
+# ---------------- RESULT ----------------
 
-def show_result(
-    score,
-    category,
-    warnings,
-    source,
-    amount=""
-):
-
-    # Risk level
+def show_result(score, category, warnings, source, amount=""):
 
     if score >= 70:
-
-        st.error(
-            f"🚨 HIGH RISK — {score}/100"
-        )
+        st.error(f"🚨 HIGH RISK — {score}/100")
 
     elif score >= 40:
-
-        st.warning(
-            f"⚠️ MEDIUM RISK — {score}/100"
-        )
+        st.warning(f"⚠️ MEDIUM RISK — {score}/100")
 
     else:
-
-        st.success(
-            f"🟢 LOW RISK — {score}/100"
-        )
-
-    # Progress bar
+        st.success(f"🟢 LOW RISK — {score}/100")
 
     st.progress(score)
-
-    # Result cards
 
     col1, col2 = st.columns(2)
 
     with col1:
-
         st.markdown(
             f"""
             <div class="card">
-            <b>🏷️ Category</b>
-            <br>
-            {category}
+                <b>🏷️ Category</b><br>
+                {category}
             </div>
             """,
             unsafe_allow_html=True
         )
 
     with col2:
-
         st.markdown(
             f"""
             <div class="card">
-            <b>🧠 Detection</b>
-            <br>
-            {source}
+                <b>🧠 Detection</b><br>
+                {source}
             </div>
             """,
             unsafe_allow_html=True
         )
 
-    # Amount
-
     if amount:
+        st.info(f"💰 Payment Amount: {amount}")
 
-        st.info(
-            f"💰 Payment Amount: {amount}"
-        )
-
-    # Warning signs
-
-    st.markdown(
-        "### ⚠️ Warning Signs"
-    )
+    st.markdown("### ⚠️ Warning Signs")
 
     for warning in warnings:
+        st.write("🔸", warning)
 
-        st.write(
-            "🔸",
-            warning
-        )
+    st.markdown("### 🛡️ What You Should Do")
 
-    # Actions
-
-    st.markdown(
-        "### 🛡️ What You Should Do"
-    )
-
-    st.write(
-        "✅ Verify through an official channel."
-    )
-
-    st.write(
-        "✅ Never share OTP, PIN, password or CVV."
-    )
-
-    st.write(
-        "✅ Do not make a payment until verified."
-    )
+    st.write("✅ Verify through an official channel.")
+    st.write("✅ Never share OTP, PIN, password or CVV.")
+    st.write("✅ Do not make a payment until verified.")
 
 
 # ---------------- TABS ----------------
 
-message_tab, link_tab, payment_tab, history_tab = st.tabs(
-    [
-        "📩 Message Scanner",
-        "🔗 Link Scanner",
-        "💳 Payment Scanner",
-        "🕘 Scan History"
-    ]
-)
+message_tab, link_tab, payment_tab, history_tab = st.tabs([
+    "📩 Message Scanner",
+    "🔗 Link Scanner",
+    "💳 Payment Scanner",
+    "🕘 Scan History"
+])
 
 
 # ==================================================
@@ -344,9 +216,7 @@ message_tab, link_tab, payment_tab, history_tab = st.tabs(
 
 with message_tab:
 
-    st.markdown(
-        "### 📩 Message Scam Detection"
-    )
+    st.markdown("### 📩 Message Scam Detection")
 
     st.caption(
         "Paste an SMS, WhatsApp message, email or suspicious notification."
@@ -356,9 +226,8 @@ with message_tab:
         "Suspicious message",
         height=150,
         placeholder=(
-            "Example: URGENT! Your bank account will be "
-            "blocked today. Verify your account immediately "
-            "by clicking this link and entering your OTP..."
+            "Example: URGENT! Your bank account will be blocked "
+            "today. Verify your OTP immediately..."
         )
     )
 
@@ -369,9 +238,7 @@ with message_tab:
 
         if message.strip():
 
-            score, category, warnings = detect(
-                message
-            )
+            score, category, warnings = detect(message)
 
             show_result(
                 score,
@@ -380,16 +247,10 @@ with message_tab:
                 "FinShield Detector"
             )
 
-            save(
-                score,
-                category
-            )
+            save(score, category)
 
         else:
-
-            st.warning(
-                "Please paste a message first."
-            )
+            st.warning("Please paste a message first.")
 
 
 # ==================================================
@@ -398,12 +259,10 @@ with message_tab:
 
 with link_tab:
 
-    st.markdown(
-        "### 🔗 Suspicious Link Detection"
-    )
+    st.markdown("### 🔗 Suspicious Link Detection")
 
     st.caption(
-        "Checks the URL structure without opening the website."
+        "Checks URL structure without opening the website."
     )
 
     url = st.text_input(
@@ -418,70 +277,50 @@ with link_tab:
 
         if url.strip():
 
-            if not url.startswith(
-                ("http://", "https://")
-            ):
-
+            if not url.startswith(("http://", "https://")):
                 url = "https://" + url
 
             parsed = urlparse(url)
 
             warnings = []
 
-            # HTTP check
-
+            # HTTP
             if parsed.scheme == "http":
+                warnings.append("The URL does not use HTTPS.")
 
-                warnings.append(
-                    "The URL does not use HTTPS."
-                )
-
-            # IP address check
-
+            # IP address
             if re.match(
                 r"^\d{1,3}(\.\d{1,3}){3}$",
                 parsed.hostname or ""
             ):
-
                 warnings.append(
                     "The URL uses an IP address instead of a domain name."
                 )
 
             # @ symbol
-
             if "@" in url:
-
                 warnings.append(
                     "The URL contains an @ symbol."
                 )
 
             # Long URL
-
             if len(url) > 100:
-
                 warnings.append(
                     "The URL is unusually long."
                 )
 
-            # Suspicious words
-
-            if any(
-                word in url.lower()
-                for word in [
-                    "login",
-                    "verify",
-                    "otp",
-                    "payment",
-                    "refund",
-                    "account"
-                ]
-            ):
-
+            # Suspicious keywords
+            if any(word in url.lower() for word in [
+                "login",
+                "verify",
+                "otp",
+                "payment",
+                "refund",
+                "account"
+            ]):
                 warnings.append(
                     "The URL contains suspicious keywords."
                 )
-
-            # Risk score
 
             score = min(
                 100,
@@ -489,7 +328,6 @@ with link_tab:
             )
 
             if not warnings:
-
                 warnings = [
                     "No obvious structural warning found."
                 ]
@@ -507,10 +345,7 @@ with link_tab:
             )
 
         else:
-
-            st.warning(
-                "Please enter a URL first."
-            )
+            st.warning("Please enter a URL first.")
 
 
 # ==================================================
@@ -519,9 +354,7 @@ with link_tab:
 
 with payment_tab:
 
-    st.markdown(
-        "### 💳 Payment Scam Detection"
-    )
+    st.markdown("### 💳 Payment Scam Detection")
 
     st.caption(
         "Analyze suspicious payment or money-transfer requests."
@@ -566,7 +399,6 @@ with payment_tab:
             )
 
         else:
-
             st.warning(
                 "Please enter a payment request."
             )
@@ -578,41 +410,30 @@ with payment_tab:
 
 with history_tab:
 
-    st.markdown(
-        "### 🕘 Recent Scans"
-    )
+    st.markdown("### 🕘 Recent Scans")
 
     if st.session_state.history:
 
         for score, category in st.session_state.history:
 
             if score >= 70:
-
                 icon = "🚨"
-
             elif score >= 40:
-
                 icon = "⚠️"
-
             else:
-
                 icon = "🟢"
 
             st.markdown(
                 f"""
                 <div class="card">
-                {icon}
-                <b>{category}</b>
-                <br>
-                Risk Score:
-                <b>{score}/100</b>
+                    {icon} <b>{category}</b><br>
+                    Risk Score: <b>{score}/100</b>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
 
     else:
-
         st.info(
             "No scans yet. Start by analyzing a message."
         )
@@ -625,8 +446,7 @@ st.divider()
 st.markdown(
     """
     <center>
-    🛡️ <b>FinShield AI</b>
-    • Stay Alert • Stay Safe
+        🛡️ <b>FinShield AI</b> • Stay Alert • Stay Safe
     </center>
     """,
     unsafe_allow_html=True
